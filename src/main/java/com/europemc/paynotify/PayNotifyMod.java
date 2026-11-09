@@ -107,8 +107,8 @@ public class PayNotifyMod implements ClientModInitializer {
             SystemToast.add(mc.getToastManager(), TOAST_TYPE,
                 Text.literal("💰 Payment received!").formatted(Formatting.GOLD),
                 Text.literal("+" + config.currencySymbol + FMT.format(amount)).formatted(Formatting.GREEN));
-            if (config.playSound) {
-                mc.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f));
+            if (config.playSound && mc.player != null) {
+                mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             }
         });
     }
