@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "europemc_paynotify",
+  "version": "${version}",
+  "name": "EuropeMC Pay Notifier",
+  "description": "Shows a pop-up notification when you receive a payment above your chosen amount on EuropeMC.",
+  "authors": ["EuropeMC"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.europemc.paynotify.PayNotifyMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
