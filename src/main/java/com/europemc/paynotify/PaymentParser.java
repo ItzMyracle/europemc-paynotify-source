@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class PaymentParser {
-    private static final String NUM = "(\\d[\\d,]*(?:\\.\\d+)?)\\s*([kKmMbB])?(?![\\w])";
+    private static final String NUM = "(\\d[\\d,]*(?:\\.\\d+)?)\\s*([kKmMbBtT])?(?![\\w])";
     private static final Pattern ANY_NUMBER = Pattern.compile("(?<![\\w.])" + NUM);
 
     private PaymentParser() {}
@@ -48,6 +48,18 @@ public final class PaymentParser {
         return OptionalDouble.empty();
     }
 
+    /** Parses a typed amount like 5000, 250k, 1.5M, 2B, 1T. */
+    public static OptionalDouble parseAmount(String text) {
+        if (text == null) return OptionalDouble.empty();
+        Matcher m = Pattern.compile("^\\s*" + NUM.replace("(?![\\w])", "") + "\\s*$").matcher(text);
+        if (!m.matches()) return OptionalDouble.empty();
+        try {
+            return OptionalDouble.of(toDouble(m.group(1), m.group(2)));
+        } catch (NumberFormatException e) {
+            return OptionalDouble.empty();
+        }
+    }
+
     private static double toDouble(String num, String suffix) {
         double v = Double.parseDouble(num.replace(",", ""));
         if (suffix != null) {
@@ -55,6 +67,7 @@ public final class PaymentParser {
                 case 'k' -> v *= 1_000;
                 case 'm' -> v *= 1_000_000;
                 case 'b' -> v *= 1_000_000_000;
+                case 't' -> v *= 1_000_000_000_000.0;
             }
         }
         return v;

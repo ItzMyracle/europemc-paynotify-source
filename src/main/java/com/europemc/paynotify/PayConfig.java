@@ -20,6 +20,8 @@ public class PayConfig {
     public boolean playSound = true;
     /** Prints the raw ECONOMY messages in your chat so you can see exactly what the server sends. */
     public boolean debug = false;
+    /** How long the pop-up stays on screen. */
+    public float durationSeconds = 4.5f;
     /** A message must contain this text to be checked. */
     public String prefix = "ECONOMY";
     public String currencySymbol = "$";

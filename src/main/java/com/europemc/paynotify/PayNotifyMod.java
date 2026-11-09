@@ -1,33 +1,33 @@
 package com.europemc.paynotify;
 
 import com.mojang.brigadier.arguments.BoolArgumentType;
-import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.toast.SystemToast;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.DecimalFormat;
 import java.util.OptionalDouble;
 
 public class PayNotifyMod implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("europemc_paynotify");
     public static PayConfig config;
 
-    private static final SystemToast.Type TOAST_TYPE = new SystemToast.Type(6000L);
-    private static final DecimalFormat FMT = new DecimalFormat("#,##0.##");
-
     @Override
     public void onInitializeClient() {
         config = PayConfig.load();
+
+        HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT,
+                Identifier.of("europemc_paynotify", "toast"), new PayToastHud());
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) handle(message.getString());
@@ -37,12 +37,19 @@ public class PayNotifyMod implements ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
             dispatcher.register(ClientCommandManager.literal("paynotify")
                 .then(ClientCommandManager.literal("min")
-                    .then(ClientCommandManager.argument("amount", DoubleArgumentType.doubleArg(0))
+                    .then(ClientCommandManager.argument("amount", StringArgumentType.word())
                         .executes(ctx -> {
-                            config.minAmount = DoubleArgumentType.getDouble(ctx, "amount");
+                            String raw = StringArgumentType.getString(ctx, "amount");
+                            OptionalDouble v = PaymentParser.parseAmount(raw);
+                            if (v.isEmpty()) {
+                                ctx.getSource().sendFeedback(Text.literal(
+                                    "Invalid amount. Examples: 5000, 250k, 1.5M, 2B, 1T").formatted(Formatting.RED));
+                                return 0;
+                            }
+                            config.minAmount = v.getAsDouble();
                             config.save();
                             ctx.getSource().sendFeedback(Text.literal("Minimum payment for notification: "
-                                + FMT.format(config.minAmount)).formatted(Formatting.GREEN));
+                                + AmountFormat.abbreviate(config.minAmount)).formatted(Formatting.GREEN));
                             return 1;
                         })))
                 .then(ClientCommandManager.literal("toggle").executes(ctx -> {
@@ -70,15 +77,28 @@ public class PayNotifyMod implements ClientModInitializer {
                     ctx.getSource().sendFeedback(Text.literal("Config reloaded."));
                     return 1;
                 }))
-                .then(ClientCommandManager.literal("test").executes(ctx -> {
-                    notifyPayment(config.minAmount);
-                    return 1;
-                }))
+                .then(ClientCommandManager.literal("test")
+                    .executes(ctx -> {
+                        notifyPayment(config.minAmount);
+                        return 1;
+                    })
+                    .then(ClientCommandManager.argument("amount", StringArgumentType.word())
+                        .executes(ctx -> {
+                            OptionalDouble v = PaymentParser.parseAmount(StringArgumentType.getString(ctx, "amount"));
+                            if (v.isEmpty()) {
+                                ctx.getSource().sendFeedback(Text.literal("Invalid amount. Try: /paynotify test 2.5B")
+                                    .formatted(Formatting.RED));
+                                return 0;
+                            }
+                            notifyPayment(v.getAsDouble());
+                            return 1;
+                        })))
                 .executes(ctx -> {
                     ctx.getSource().sendFeedback(Text.literal(
                         "EuropeMC Pay Notifier - " + (config.enabled ? "ON" : "OFF")
-                        + " | min: " + FMT.format(config.minAmount)
-                        + "\n/paynotify min <amount> | toggle | sound <true/false> | debug <true/false> | reload | test"));
+                        + " | min: " + AmountFormat.abbreviate(config.minAmount)
+                        + "\n/paynotify min <amount e.g. 250k, 5M, 1B, 1T> | toggle | sound <true/false>"
+                        + " | debug <true/false> | reload | test [amount]"));
                     return 1;
                 })));
     }
@@ -104,11 +124,11 @@ public class PayNotifyMod implements ClientModInitializer {
     private static void notifyPayment(double amount) {
         MinecraftClient mc = MinecraftClient.getInstance();
         mc.execute(() -> {
-            SystemToast.add(mc.getToastManager(), TOAST_TYPE,
-                Text.literal("💰 Payment received!").formatted(Formatting.GOLD),
-                Text.literal("+" + config.currencySymbol + FMT.format(amount)).formatted(Formatting.GREEN));
+            PayToastHud.push(amount, config.currencySymbol, (long) (config.durationSeconds * 1000));
             if (config.playSound && mc.player != null) {
                 mc.player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                if (amount >= 1_000_000) mc.player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, 0.5f, 1.2f);
+                if (amount >= 1_000_000_000) mc.player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.0f);
             }
         });
     }
