@@ -1,24 +1,19 @@
-# EuropeMC Pay Notifier (Fabric 1.21.11, client-side)
+# EuropeMC Pay Notifier + Gamble Tracker (Fabric 1.21.11, client-side)
 
-Shows a pop-up toast (top-right) whenever an `ECONOMY` chat message says you received
-at least your chosen amount.
+## Press B  ->  Gamble Tracker
+* Sessions: create, end, delete, rename. Pick one in the sidebar or "All-Time".
+* Overview: profit, money in/out, W/L, win rate, biggest win/loss, session streak + all-time streak, form strip.
+* Transactions: every payment (IN/OUT) with player, amount and tag.
+* Flagged: bets under your minimum / over your maximum. Click a row to copy `/pay <player> <amount>` for the refund.
+* Settings: min bet, max bet, role (HOST/PLAYER), pop-up threshold, payout window, HUD toggles.
+* HUD: corner panel (top right) and a bar above the hotbar. Both can be switched off in Settings.
 
-## Change the amount any time (in game)
-- `/paynotify min 5000`   -> only notify for payments of 5,000 or more
-- `/paynotify toggle`     -> on/off
-- `/paynotify sound false`
-- `/paynotify test`       -> preview the pop-up
-- `/paynotify debug true` -> prints raw ECONOMY messages in chat (use this if nothing triggers)
+## Commands
+`/paynotify min|betmin|betmax <250k | 5M | 1B | 1T>` , `toggle`, `sound <true/false>`, `debug <true/false>`, `reload`, `test [amount]`
 
-Or edit `.minecraft/config/europemc-paynotify.json` and run `/paynotify reload`.
-Fields: minAmount, enabled, playSound, prefix, currencySymbol, incomingKeywords.
+## If payments are not detected
+Run `/paynotify debug true`, get paid / pay someone, and look at the printed line. Then edit
+`config/europemc-paynotify.json` (incomingKeywords, outgoingKeywords, incomingPlayerPatterns, outgoingPlayerPatterns).
 
 ## Build
-1. Install JDK 21 and Gradle 9.2+ (or copy `src/`, `build.gradle`, `gradle.properties` into the official
-   Fabric example mod template: https://github.com/FabricMC/fabric-example-mod).
-2. Run `gradle wrapper` once, then `./gradlew build`.
-3. Jar is in `build/libs/` -> put it in your `mods` folder with Fabric Loader + Fabric API.
-
-## No-install build (GitHub)
-Upload this project to a new GitHub repository. The included workflow builds the jar automatically:
-Actions tab -> latest run -> Artifacts -> europemc-paynotify-jar.
+Upload the project to GitHub; the included workflow builds the jar (Actions -> Artifacts).

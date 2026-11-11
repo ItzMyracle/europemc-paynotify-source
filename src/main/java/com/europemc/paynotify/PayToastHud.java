@@ -19,10 +19,16 @@ public class PayToastHud implements HudElement {
     private static final int W = 200, H = 46, GAP = 6, MAX_VISIBLE = 4;
     private static final long ANIM_MS = 450;
 
-    private record Notif(double amount, String symbol, long start, long duration) {}
+    private record Notif(double amount, String symbol, long start, long duration, String title, int accent) {}
 
     public static void push(double amount, String symbol, long durationMs) {
-        ACTIVE.add(new Notif(amount, symbol, System.currentTimeMillis(), Math.max(1500, durationMs)));
+        ACTIVE.add(new Notif(amount, symbol, System.currentTimeMillis(), Math.max(1500, durationMs), null, 0));
+        while (ACTIVE.size() > MAX_VISIBLE) ACTIVE.remove(0);
+    }
+
+    /** Red/orange warning pop-up (e.g. someone paid under the minimum bet). */
+    public static void pushFlag(String title, int accentRgb, double amount, String symbol, long durationMs) {
+        ACTIVE.add(new Notif(amount, symbol, System.currentTimeMillis(), Math.max(1500, durationMs), title, accentRgb));
         while (ACTIVE.size() > MAX_VISIBLE) ACTIVE.remove(0);
     }
 
@@ -60,6 +66,9 @@ public class PayToastHud implements HudElement {
         else if (amt >= 1e3) { accent = 0xFFAA00; title = "PAYMENT RECEIVED"; icon = new ItemStack(Items.GOLD_INGOT); }
         else { accent = 0xFFAA00; title = "PAYMENT RECEIVED"; icon = new ItemStack(Items.GOLD_NUGGET); }
 
+        boolean flagged = n.title() != null;
+        if (flagged) { accent = n.accent(); title = n.title(); icon = new ItemStack(Items.BARRIER); }
+
         // soft shadow + background
         ctx.fill(x + 2, y + 3, x + W + 2, y + H + 3, 0x55000000);
         ctx.fillGradient(x, y, x + W, y + H, 0xF0161626, 0xF00A0A12);
@@ -92,7 +101,7 @@ public class PayToastHud implements HudElement {
         ctx.drawText(tr, Text.literal(title).formatted(Formatting.BOLD), x + 38, y + 7, argb(255, accent), true);
 
         // big abbreviated amount
-        String amountText = "+" + n.symbol() + AmountFormat.abbreviate(amt);
+        String amountText = (flagged ? "" : "+") + n.symbol() + AmountFormat.abbreviate(amt);
         float scale = Math.min(2f, 150f / Math.max(1, tr.getWidth(amountText)));
         var m = ctx.getMatrices();
         m.pushMatrix();

@@ -12,6 +12,12 @@ public final class AmountFormat {
 
     private AmountFormat() {}
 
+    /** +$1.5M / -$500 / $0 */
+    public static String signed(double amount, String symbol) {
+        String sign = amount > 0 ? "+" : amount < 0 ? "-" : "";
+        return sign + symbol + abbreviate(Math.abs(amount));
+    }
+
     public static String abbreviate(double amount) {
         double abs = Math.abs(amount);
         String sign = amount < 0 ? "-" : "";

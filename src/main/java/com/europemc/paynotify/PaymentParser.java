@@ -11,25 +11,8 @@ public final class PaymentParser {
 
     private PaymentParser() {}
 
-    /** Returns the incoming amount if this message is an incoming ECONOMY payment, otherwise empty. */
-    public static OptionalDouble parseIncoming(String raw, PayConfig cfg) {
-        if (raw == null) return OptionalDouble.empty();
-        String msg = raw.replaceAll("§.", "").trim();
-
-        if (!msg.toUpperCase(Locale.ROOT).contains(cfg.prefix.toUpperCase(Locale.ROOT))) {
-            return OptionalDouble.empty();
-        }
-
-        if (!cfg.incomingKeywords.isEmpty()) {
-            String lower = msg.toLowerCase(Locale.ROOT);
-            boolean match = false;
-            for (String k : cfg.incomingKeywords) {
-                if (!k.isEmpty() && lower.contains(k.toLowerCase(Locale.ROOT))) { match = true; break; }
-            }
-            if (!match) return OptionalDouble.empty();
-        }
-
-        // Remove the prefix so it can't interfere
+    /** Amount of any ECONOMY message (direction is decided elsewhere). */
+    public static OptionalDouble extractAmount(String msg, PayConfig cfg) {
         String body = msg.replaceFirst("(?i)" + Pattern.quote(cfg.prefix), " ");
 
         // 1) Prefer a number right next to the currency symbol ($1,500 / 1,500$)
@@ -40,11 +23,9 @@ public final class PaymentParser {
             m = Pattern.compile("(?<![\\w.])" + NUM.replace("(?![\\w])", "") + "\\s*" + sym).matcher(body);
             if (m.find()) return OptionalDouble.of(toDouble(m.group(1), m.group(2)));
         }
-
         // 2) Otherwise the first standalone number
         Matcher m = ANY_NUMBER.matcher(body);
         if (m.find()) return OptionalDouble.of(toDouble(m.group(1), m.group(2)));
-
         return OptionalDouble.empty();
     }
 
