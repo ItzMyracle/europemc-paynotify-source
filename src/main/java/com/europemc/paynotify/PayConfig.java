@@ -24,6 +24,7 @@ public class PayConfig {
     public float durationSeconds = 4.5f;
 
     // ---- message matching ----
+    /** Every EuropeMC payment line starts with this tag. Empty = no requirement. */
     public String prefix = "ECONOMY";
     public String currencySymbol = "$";
     public List<String> incomingKeywords = new ArrayList<>(List.of(
@@ -53,13 +54,28 @@ public class PayConfig {
     public boolean showCornerHud = true;
     public boolean showHotbarBar = true;
 
+    // ---- clickable chat buttons under incoming payments ----
+    public boolean chatButtons = true;
+    /** true = clicking sends the command right away, false = puts it into your chat box so you can press Enter. */
+    public boolean buttonsRunCommand = true;
+    public String payCommand = "/pay";
+    public String balCommand = "/bal";
+    /** "payback" = same amount back, "bal" = /bal <player>, "2x" = double, "0.5x" = half ... */
+    public List<String> buttons = new ArrayList<>(List.of("0.5x", "payback", "1.5x", "2x", "3x", "4x", "bal"));
+    /** Only treat a line as a payment if it STARTS like one ("Name paid you ..." / "You paid ..."). Stops fake chat messages. */
+    public boolean strictStart = true;
+
     public boolean isHost() { return !"PLAYER".equalsIgnoreCase(role); }
 
     public static PayConfig load() {
         try {
             if (Files.exists(FILE)) {
                 PayConfig c = GSON.fromJson(Files.readString(FILE), PayConfig.class);
-                if (c != null) { c.save(); return c; }
+                if (c != null) {
+                    if (c.prefix == null || c.prefix.isBlank()) c.prefix = "ECONOMY"; // EuropeMC lines carry the ECONOMY tag
+                    c.save();
+                    return c;
+                }
             }
         } catch (Exception e) {
             PayNotifyMod.LOGGER.warn("Could not read config, using defaults", e);

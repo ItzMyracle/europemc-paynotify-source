@@ -11,12 +11,24 @@ import java.util.regex.PatternSyntaxException;
 public final class TxParser {
     public record Parsed(boolean incoming, String player, double amount) {}
 
+    /** "You ..." or "Name paid you ..." right at the start of the line. */
+    private static final Pattern START = Pattern.compile(
+            "^(?:you\\s|\\.?[A-Za-z_]\\w{1,15}\\s+(?:has\\s+)?(?:paid|sent|gave|transferred)\\s+you\\b)",
+            Pattern.CASE_INSENSITIVE);
+
     private TxParser() {}
 
     public static Parsed parse(String raw, PayConfig cfg) {
         if (raw == null) return null;
         String msg = raw.replaceAll("\u00a7.", "").trim();
-        if (!msg.toUpperCase(Locale.ROOT).contains(cfg.prefix.toUpperCase(Locale.ROOT))) return null;
+        String prefix = cfg.prefix == null ? "" : cfg.prefix.trim();
+        if (!prefix.isEmpty() && !msg.toUpperCase(Locale.ROOT).contains(prefix.toUpperCase(Locale.ROOT))) return null;
+
+        String body = prefix.isEmpty() ? msg : msg.replaceFirst("(?i)" + Pattern.quote(prefix), " ");
+        if (cfg.strictStart) {
+            String norm = body.replaceFirst("^[^A-Za-z0-9_.]+", "");
+            if (!START.matcher(norm).find()) return null;
+        }
 
         String lower = msg.toLowerCase(Locale.ROOT);
         boolean outgoing = containsAny(lower, cfg.outgoingKeywords);
@@ -26,7 +38,6 @@ public final class TxParser {
         OptionalDouble amount = PaymentParser.extractAmount(msg, cfg);
         if (amount.isEmpty()) return null;
 
-        String body = msg.replaceFirst("(?i)" + Pattern.quote(cfg.prefix), " ");
         String player = findPlayer(body, incoming ? cfg.incomingPlayerPatterns : cfg.outgoingPlayerPatterns);
         return new Parsed(incoming, player, amount.getAsDouble());
     }

@@ -59,11 +59,9 @@ public class PayNotifyMod implements ClientModInitializer {
         HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT,
                 Identifier.of("europemc_paynotify", "hotbar_bar"), new HudOverlays.HotbarBar());
 
-        // chat
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) handle(message.getString());
-        });
-        ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) -> handle(message.getString()));
+        // chat: payment lines are read here and get clickable buttons appended.
+        // Only system messages are used (not player chat), so players cannot fake payments.
+        ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> overlay ? message : handle(message));
 
         // commands
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
@@ -144,16 +142,17 @@ public class PayNotifyMod implements ClientModInitializer {
                 }));
     }
 
-    private static void handle(String raw) {
-        if (config == null) return;
+    private static Text handle(Text message) {
+        if (config == null) return message;
+        String raw = message.getString();
 
-        // the same line can reach us twice (chat + game event): ignore exact repeats within 150 ms
+        // ignore exact repeats within 150 ms
         long now = System.currentTimeMillis();
-        if (raw.equals(lastRaw) && now - lastRawTime < 150) return;
+        if (raw.equals(lastRaw) && now - lastRawTime < 150) return message;
         lastRaw = raw;
         lastRawTime = now;
 
-        if (config.debug && raw.toUpperCase().contains(config.prefix.toUpperCase())) {
+        if (config.debug && looksLikeMoney(raw)) {
             MinecraftClient.getInstance().execute(() -> {
                 if (MinecraftClient.getInstance().player != null) {
                     MinecraftClient.getInstance().player.sendMessage(
@@ -163,7 +162,7 @@ public class PayNotifyMod implements ClientModInitializer {
         }
 
         TxParser.Parsed p = TxParser.parse(raw, config);
-        if (p == null) return;
+        if (p == null) return message;
 
         String flag = null;
         if (config.trackingEnabled) {
@@ -172,11 +171,16 @@ public class PayNotifyMod implements ClientModInitializer {
         }
         if (flag != null && config.flagAlerts) {
             notifyFlag(p, flag);
-            return;
-        }
-        if (p.incoming() && config.enabled && p.amount() >= config.minAmount) {
+        } else if (p.incoming() && config.enabled && p.amount() >= config.minAmount) {
             notifyPayment(p.amount());
         }
+        return ChatButtons.decorate(message, p, config);
+    }
+
+    private static boolean looksLikeMoney(String raw) {
+        String l = raw.toLowerCase();
+        if (config.prefix != null && !config.prefix.isBlank() && l.contains(config.prefix.toLowerCase())) return true;
+        return l.contains("paid") || l.contains("sent") || l.contains("received") || l.contains("$");
     }
 
     private static void notifyFlag(TxParser.Parsed p, String flag) {

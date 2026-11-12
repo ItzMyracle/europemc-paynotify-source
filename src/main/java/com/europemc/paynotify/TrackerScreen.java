@@ -589,7 +589,9 @@ public class TrackerScreen extends Screen {
         toggle(c, rx, y + 80, "Corner HUD (top right)", cfg.showCornerHud, () -> { cfg.showCornerHud = !cfg.showCornerHud; changed(); });
         toggle(c, rx, y + 100, "Bar above hotbar", cfg.showHotbarBar, () -> { cfg.showHotbarBar = !cfg.showHotbarBar; changed(); });
         toggle(c, rx, y + 120, "Sounds", cfg.playSound, () -> { cfg.playSound = !cfg.playSound; changed(); });
-        txt(c, "Type 250k, 5M, 1B, 1T ... then Enter", rx, 262, GRAY);
+        toggle(c, rx, y + 140, "Chat pay buttons", cfg.chatButtons, () -> { cfg.chatButtons = !cfg.chatButtons; changed(); });
+        toggle(c, rx, y + 160, "Click = send now", cfg.buttonsRunCommand, () -> { cfg.buttonsRunCommand = !cfg.buttonsRunCommand; changed(); });
+        txt(c, "Amounts: 250k, 5M, 1B, 1T + Enter", X + 10, 283, GRAY);
     }
 
     private void labelField(DrawContext c, String label, Field f, int x, int y, int w) {

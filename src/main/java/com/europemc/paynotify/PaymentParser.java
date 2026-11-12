@@ -13,7 +13,7 @@ public final class PaymentParser {
 
     /** Amount of any ECONOMY message (direction is decided elsewhere). */
     public static OptionalDouble extractAmount(String msg, PayConfig cfg) {
-        String body = msg.replaceFirst("(?i)" + Pattern.quote(cfg.prefix), " ");
+        String body = (cfg.prefix == null || cfg.prefix.isBlank()) ? msg : msg.replaceFirst("(?i)" + Pattern.quote(cfg.prefix.trim()), " ");
 
         // 1) Prefer a number right next to the currency symbol ($1,500 / 1,500$)
         if (cfg.currencySymbol != null && !cfg.currencySymbol.isEmpty()) {
